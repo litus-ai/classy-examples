@@ -14,7 +14,7 @@ In this example, we'll see how to implement a [**Token Classification**](https:/
 
 In `classy`, by default, only two input formats are supported: [`jsonl`](https://sunglasses-ai.github.io/classy/docs/getting-started/no-code/input_formats/#jsonl) and [`tsv`](https://sunglasses-ai.github.io/classy/docs/getting-started/no-code/input_formats/#tsv). Our data, stored under `data/conll/en/{split}.conllu`, does not follow any of these two conventions and thus requires us either converting it to a `classy`-compatible format, or to write our own DataReader.
 
-For this example, we'll go with the latter option. Following [the documentation](https://sunglasses-ai.github.io/classy/docs/getting-started/overriding-code/custom-data-form/), we implement a custom Data Reader that is able to read our custom format and convert it into a sequence of [`TokensSample`](). You can find the implementation [here](src/conllu_data_driver.py).
+For this example, we'll go with the latter option. Following [the documentation](https://sunglasses-ai.github.io/classy/docs/getting-started/customizing-things/custom-data-format/), we implement a custom Data Reader that is able to read our custom format and convert it into a sequence of [`TokensSample`](). You can find the implementation [here](src/conllu_data_driver.py).
 
 The only really important part is how to register your reader for `classy` to discover. For instance, look at the last line of the source file! That's all `classy` requires.
 
