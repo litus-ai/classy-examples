@@ -1,6 +1,6 @@
 # Named Entity Recognition with BERT, BiLSTM and CRF
 
-In this example, we'll see how to implement a [**Token Classification**](https://sunglasses-ai.github.io/classy/docs/getting-started/no-code/tasks/#token-classification) model that:
+In this example, we'll see how to implement a [**Token Classification**](https://sunglasses-ai.github.io/classy/docs/reference-manual/tasks-and-formats/#token-classification) model that:
 - Reads data from a custom CoNLLu-like format, and
 - Implements a noisification strategy that, with some probability, lowercases the whole input sentence, and
 - Trains using a custom optimizer (Adamax - [:scroll: paper link](https://arxiv.org/abs/1412.6980)), and
@@ -10,7 +10,7 @@ In this example, we'll see how to implement a [**Token Classification**](https:/
 
 ## 📖 Example Explanation
 
-### 🤓 [Customizing the data format](https://sunglasses-ai.github.io/classy/docs/getting-started/overriding-code/custom-data-form/)
+### 🤓 [Customizing the data format](https://sunglasses-ai.github.io/classy/docs/getting-started/customizing-things/custom-data-format/)
 
 In `classy`, by default, only two input formats are supported: [`jsonl`](https://sunglasses-ai.github.io/classy/docs/getting-started/no-code/input_formats/#jsonl) and [`tsv`](https://sunglasses-ai.github.io/classy/docs/getting-started/no-code/input_formats/#tsv). Our data, stored under `data/conll/en/{split}.conllu`, does not follow any of these two conventions and thus requires us either converting it to a `classy`-compatible format, or to write our own DataReader.
 
@@ -21,11 +21,11 @@ The only really important part is how to register your reader for `classy` to di
 The neat part is that `classy` reads through your code automatically! No need to specify any `PYTHONPATH` or anything of the sorts :rocket:
 
 
-### 📚 [Customizing the dataset](https://sunglasses-ai.github.io/classy/docs/advanced/custom-dataset/)
+### 📚 [Customizing the dataset](https://sunglasses-ai.github.io/classy/docs/getting-started/customizing-things/custom-dataset/)
 
 Let us assume that we want our model to be robust to capitalization features of the dataset. By that, we refer to the intrinsic biases that models pick up towards capitalized words when being trained on a Named Entity Recognition task. Now, think about how often you have seen the name of a city or a person without a capital letter. Should our model be robust to this kind of noise? Why not! Then we should not touch the data itself, but work on the dataset that converts data to batches that are later fed to the model.
 
-`classy` works primarily with [IterableDatasets](https://pytorch.org/docs/stable/data.html#iterable-style-datasets), and thus implements a [function that returns an iterator of samples](src/noisy_ner_dataset.py#L89). Simply put, given some noise value, we [randomly lowercase all inputs](src/noisy_ner_dataset.py#L101) to the model, and yield the resulting batch so as to train on it.
+`classy` works primarily with [IterableDatasets](https://pytorch.org/docs/stable/data.html#iterable-style-datasets), and thus implements a [function that returns an iterator of samples](src/noisy_ner_dataset.py#L104). Simply put, given some noise value, we [randomly lowercase all inputs](src/noisy_ner_dataset.py#L101) to the model, and yield the resulting batch so as to train on it.
 
 
 ### 🏋 [Customizing the optimizer](https://sunglasses-ai.github.io/classy/docs/advanced/custom-optimizer/)
@@ -52,17 +52,36 @@ All credits for the CRF implementation go to [s14t284](https://github.com/s14t28
 
 ### 💯 [Customizing evaluation metric(s)](https://sunglasses-ai.github.io/classy/docs/advanced/custom-evaluation-metric/)
 
-To conclude, we remind you that **evaluating your model properly** is just as important as training it. And, for the case of predicting labels that span across multiple tokens (which is exactly what NER does), it is extremely important to evaluate on a *span-based metric*. 
+To conclude, we remind you that **evaluating your model properly** is just as important as training it. 
+And, for the case of predicting labels that span across multiple tokens (which is exactly what NER does), it is crucial to evaluate using a *span-based metric*. 
 
-We do just that with our [`SpanF1PredictionCallback`](src/span_f1_callback.py), a `classy.pl_callbacks.PredictionCallback` that uses [`seqeval`](https://github.com/chakki-works/seqeval) (under [`datasets`](https://github.com/huggingface/datasets)) to evaluate the predictions emitted by our model.
+We do that with our [`SpanF1Evaluation`](src/span_f1_evaluation.py), a `classy.evaluation.Evaluation` class that uses [`seqeval`](https://github.com/chakki-works/seqeval) (under [`datasets`](https://github.com/huggingface/datasets)) to evaluate the predictions emitted by our model.
 
+To log the metrics at training time you only have to add the following parameters to the train command.
+
+```
+-c callbacks=evaluation
+```
+
+`callbacks=evaluation` tells classy to insert a callback in the evaluation loop that leverages you evaluation class (`SpanF1Evaluation`) to compute the defined metrics. 
+
+To use the logged metrics (e.g. _span_f1_) as the monitor values for both  model selection and early stopping you simply have to postpend the following parameter after the previous one:
+```
+callbacks_monitor=validation_span_f1
+```
+Please notice that _validation_ is prepended to _span_f1_ (that is the original metric name in the _SpanF1Evaluation_ class) because we are using the _callbacks=evaluation_ param that automatically adds it.
 
 ## 🎁 Let's wrap things up!
 
+`classy` is based on configuration files, which define virtually everything you might need to properly train your model. Here, we introduced a [custom profile](https://sunglasses-ai.github.io/classy/docs/reference-manual/structured-configs/overall-structure/) under `configurations/profiles` that specifies all the parameters that we changed from the default ones. If you want to check the complete configuration there are two possible ways: 
+1. adding the `--print` argument to the `train` command.
+2. checking the config.yaml file in you experiment directory under _.hydra_.
+
 We walked through all the main components of `classy`, but we have not mentioned how to actually train our newly-defined model!
 
-`classy` is based on configuration files, which define virtually everything you might need to properly train your model. Specifically, each folder under `configurations` is mirrored from `classy`'s default configuration structure, and lets you add any new `.yaml` config file under the corresponding folder.
+### Training the Model
 
-Additionally, we introduce a [custom profile](https://sunglasses-ai.github.io/classy/docs/getting-started/structured-configs/profiles/) under `configurations/profiles` that specifies all the needed configurations under their respective keys (e.g., data, model, callbacks), providing the initialization parameters for every object that will need to be instantiated for training.
-
-Finally, we can launch our training by running `classy train token data/conll/en -n <exp-name> --profile ner-crf`.
+Finally, we can launch our training by running: 
+```bash
+classy train token data/conll/en -n <exp-name> --profile ner-crf -c callbacks=evaluation callbacks_monitor=validation_span_f1
+```

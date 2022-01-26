@@ -14,14 +14,16 @@ class CRF(nn.Module):
     FOR WHAT CONCERNS THIS EXAMPLE, IT CAN BE USED AS A BLACK BOX.
     """
 
-    def __init__(self, num_labels: int, pad_idx: Optional[int] = None, use_gpu: bool = True) -> None:
+    def __init__(
+        self, num_labels: int, pad_idx: Optional[int] = None, use_gpu: bool = True
+    ) -> None:
         """
 
-        :param num_labels: number of labels
-        :param pad_idxL padding index. default None
-        :return None
+        Args:
+            num_labels: number of labels
+            pad_idx: padding index. default None
+            use_gpu: whether to use the gpu
         """
-
         if num_labels < 1:
             raise ValueError("invalid number of labels: {0}".format(num_labels))
 
@@ -38,17 +40,21 @@ class CRF(nn.Module):
 
         self._initialize_parameters(pad_idx)
 
-    def forward(self, h: FloatTensor, labels: LongTensor, mask: BoolTensor) -> FloatTensor:
+    def forward(
+        self, h: FloatTensor, labels: LongTensor, mask: BoolTensor
+    ) -> FloatTensor:
         """
 
-        :param h: hidden matrix (batch_size, seq_len, num_labels)
-        :param labels: answer labels of each sequence
+        Args:
+            h: hidden matrix (batch_size, seq_len, num_labels)
+            labels: answer labels of each sequence
                        in mini batch (batch_size, seq_len)
-        :param mask: mask tensor of each sequence
+            mask: mask tensor of each sequence
                      in mini batch (batch_size, seq_len)
-        :return: The log-likelihood (batch_size)
-        """
 
+        Returns:
+            The log-likelihood (batch_size)
+        """
         log_numerator = self._compute_numerator_log_likelihood(h, labels, mask)
         log_denominator = self._compute_denominator_log_likelihood(h, mask)
 
@@ -56,13 +62,16 @@ class CRF(nn.Module):
 
     def viterbi_decode(self, h: FloatTensor, mask: BoolTensor) -> List[List[int]]:
         """
-        decode labels using viterbi algorithm
-        :param h: hidden matrix (batch_size, seq_len, num_labels)
-        :param mask: mask tensor of each sequence
-                     in mini batch (batch_size, batch_size)
-        :return: labels of each sequence in mini batch
-        """
+        Decode labels using viterbi algorithm.
 
+        Args:
+            h: hidden matrix (batch_size, seq_len, num_labels)
+            mask: mask tensor of each sequence
+                in mini batch (batch_size, batch_size)
+
+        Returns:
+            labels of each sequence in mini batch
+        """
         batch_size, seq_len, _ = h.size()
         # prepare the sequence lengths in each sequence
         seq_lens = mask.sum(dim=1)
@@ -95,7 +104,10 @@ class CRF(nn.Module):
             path.append(best_path)
 
         # predict labels of mini batch
-        best_paths = [self._viterbi_compute_best_path(i, seq_lens, score, path) for i in range(batch_size)]
+        best_paths = [
+            self._viterbi_compute_best_path(i, seq_lens, score, path)
+            for i in range(batch_size)
+        ]
 
         return best_paths
 
@@ -107,16 +119,19 @@ class CRF(nn.Module):
         path: List[torch.LongTensor],
     ) -> List[int]:
         """
-        return labels using viterbi algorithm
-        :param batch_idx: index of batch
-        :param seq_lens: sequence lengths in mini batch (batch_size)
-        :param score: transition scores of length max sequence size
-                      in mini batch [(batch_size, num_labels)]
-        :param path: transition paths of length max sequence size
-                     in mini batch [(batch_size, num_labels)]
-        :return: labels of batch_idx-th sequence
-        """
+        Computes labels using viterbi algorithm.
 
+        Args:
+            batch_idx: index of batch
+            seq_lens: sequence lengths in mini batch (batch_size)
+            score: transition scores of length max sequence size
+                    in mini batch [(batch_size, num_labels)]
+            path: transition paths of length max sequence size
+                    in mini batch [(batch_size, num_labels)]
+
+        Returns:
+            labels of batch_idx-th sequence
+        """
         seq_end_idx = seq_lens[batch_idx] - 1
         # extract label of end sequence
         _, best_last_label = (score[seq_end_idx][batch_idx] + self.end_trans).max(0)
@@ -131,12 +146,15 @@ class CRF(nn.Module):
 
     def _compute_denominator_log_likelihood(self, h: FloatTensor, mask: BoolTensor):
         """
+        Compute the denominator term for the log-likelihood.
 
-        compute the denominator term for the log-likelihood
-        :param h: hidden matrix (batch_size, seq_len, num_labels)
-        :param mask: mask tensor of each sequence
-                     in mini batch (batch_size, seq_len)
-        :return: The score of denominator term for the log-likelihood
+        Args:
+            h: hidden matrix (batch_size, seq_len, num_labels)
+            mask: mask tensor of each sequence
+                    in mini batch (batch_size, seq_len)
+
+        Returns:
+            The score of denominator term for the log-likelihood
         """
         device = h.device
         batch_size, seq_len, _ = h.size()
@@ -178,17 +196,22 @@ class CRF(nn.Module):
         # return the log likely food of all data in mini batch
         return torch.logsumexp(score, 1)
 
-    def _compute_numerator_log_likelihood(self, h: FloatTensor, y: LongTensor, mask: BoolTensor) -> FloatTensor:
+    def _compute_numerator_log_likelihood(
+        self, h: FloatTensor, y: LongTensor, mask: BoolTensor
+    ) -> FloatTensor:
         """
-        compute the numerator term for the log-likelihood
-        :param h: hidden matrix (batch_size, seq_len, num_labels)
-        :param y: answer labels of each sequence
-                  in mini batch (batch_size, seq_len)
-        :param mask: mask tensor of each sequence
-                     in mini batch (batch_size, seq_len)
-        :return: The score of numerator term for the log-likelihood
-        """
+        Compute the numerator term for the log-likelihood.
 
+        Args:
+            h: hidden matrix (batch_size, seq_len, num_labels)
+            y: answer labels of each sequence
+                in mini batch (batch_size, seq_len)
+            mask: mask tensor of each sequence
+                    in mini batch (batch_size, seq_len)
+
+        Returns:
+            The score of numerator term for the log-likelihood
+        """
         batch_size, seq_len, _ = h.size()
 
         h_unsqueezed = h.unsqueeze(-1)
@@ -199,7 +222,12 @@ class CRF(nn.Module):
         # extract first vector of sequences in mini batch
         calc_range = seq_len - 1
         score = self.start_trans[y[:, 0]] + sum(
-            [self._calc_trans_score_for_num_llh(h_unsqueezed, y, trans, mask, t, arange_b) for t in range(calc_range)]
+            [
+                self._calc_trans_score_for_num_llh(
+                    h_unsqueezed, y, trans, mask, t, arange_b
+                )
+                for t in range(calc_range)
+            ]
         )
 
         # extract end label number of each sequence in mini batch
@@ -224,16 +252,19 @@ class CRF(nn.Module):
         arange_b: FloatTensor,
     ) -> torch.Tensor:
         """
-        calculate transition score for computing numberator llh
-        :param h: hidden matrix (batch_size, seq_len, num_labels)
-        :param y: answer labels of each sequence
-                  in mini batch (batch_size, seq_len)
-        :param trans: transition score
-        :param mask: mask tensor of each sequence
-                     in mini batch (batch_size, seq_len)
-        :paramt t: index of hidden, transition, and mask matrixex
-        :param arange_b: this param is seted torch.arange(batch_size)
-        :param batch_size: batch size of this calculation
+
+        Args:
+            h: hidden matrix (batch_size, seq_len, num_labels)
+            y: answer labels of each sequence
+                in mini batch (batch_size, seq_len)
+            trans: transition score
+            mask: mask tensor of each sequence
+                    in mini batch (batch_size, seq_len)
+            t: index of hidden, transition, and mask matrixex
+            arange_b: batch size of this calculation
+
+        Returns:
+            trans score
         """
         mask_t = mask[:, t]
         mask_t1 = mask[:, t + 1]
@@ -252,11 +283,12 @@ class CRF(nn.Module):
 
     def _initialize_parameters(self, pad_idx: Optional[int]) -> None:
         """
-        initialize transition parameters
-        :param: pad_idx: if not None, additional initialize
-        :return: None
-        """
+        Initialize transition parameters.
 
+        Args:
+            pad_idx: if not None, additional initialize
+
+        """
         nn.init.uniform_(self.trans_matrix, -0.1, 0.1)
         nn.init.uniform_(self.start_trans, -0.1, 0.1)
         nn.init.uniform_(self.end_trans, -0.1, 0.1)
