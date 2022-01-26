@@ -12,9 +12,9 @@ In this example, we'll see how to implement a [**Token Classification**](https:/
 
 ### 🤓 [Customizing the data format](https://sunglasses-ai.github.io/classy/docs/getting-started/customizing-things/custom-data-format/)
 
-In `classy`, by default, only two input formats are supported: [`jsonl`](https://sunglasses-ai.github.io/classy/docs/getting-started/no-code/input_formats/#jsonl) and [`tsv`](https://sunglasses-ai.github.io/classy/docs/getting-started/no-code/input_formats/#tsv). Our data, stored under `data/conll/en/{split}.conllu`, does not follow any of these two conventions and thus requires us either converting it to a `classy`-compatible format, or to write our own DataReader.
+In `classy`, by default, only two input formats are supported: [`jsonl`](https://sunglasses-ai.github.io/classy/docs/reference-manual/tasks-and-formats/#jsonl-2) and [`tsv`](https://sunglasses-ai.github.io/classy/docs/reference-manual/tasks-and-formats/#tsv-2). Our data, stored under `data/conll/en/{split}.conllu`, does not follow any of these two conventions and thus requires us either converting it to a `classy`-compatible format, or to write our own DataReader.
 
-For this example, we'll go with the latter option. Following [the documentation](https://sunglasses-ai.github.io/classy/docs/getting-started/customizing-things/custom-data-format/), we implement a custom Data Reader that is able to read our custom format and convert it into a sequence of [`TokensSample`](). You can find the implementation [here](src/conllu_data_driver.py).
+For this example, we'll go with the latter option. Following [the documentation](https://sunglasses-ai.github.io/classy/docs/getting-started/customizing-things/custom-data-format/), we implement a custom Data Reader that is able to read our custom format and convert it into a sequence of [`TokensSample`](https://sunglasses-ai.github.io/classy/docs/api/data/data_drivers/#TokensSample). You can find the implementation [here](src/conllu_data_driver.py).
 
 The only really important part is how to register your reader for `classy` to discover. For instance, look at the last line of the source file! That's all `classy` requires.
 
@@ -25,17 +25,17 @@ The neat part is that `classy` reads through your code automatically! No need to
 
 Let us assume that we want our model to be robust to capitalization features of the dataset. By that, we refer to the intrinsic biases that models pick up towards capitalized words when being trained on a Named Entity Recognition task. Now, think about how often you have seen the name of a city or a person without a capital letter. Should our model be robust to this kind of noise? Why not! Then we should not touch the data itself, but work on the dataset that converts data to batches that are later fed to the model.
 
-`classy` works primarily with [IterableDatasets](https://pytorch.org/docs/stable/data.html#iterable-style-datasets), and thus implements a [function that returns an iterator of samples](src/noisy_ner_dataset.py#L104). Simply put, given some noise value, we [randomly lowercase all inputs](src/noisy_ner_dataset.py#L101) to the model, and yield the resulting batch so as to train on it.
+`classy` works primarily with [IterableDatasets](https://pytorch.org/docs/stable/data.html#iterable-style-datasets), and thus implements a [function that returns an iterator of samples](src/noisy_ner_dataset.py#L104). Simply put, given some noise value, we [randomly lowercase all inputs](src/noisy_ner_dataset.py#L118) to the model, and yield the resulting batch so as to train on it.
 
 
-### 🏋 [Customizing the optimizer](https://sunglasses-ai.github.io/classy/docs/advanced/custom-optimizer/)
+### 🏋 [Customizing the optimizer](https://sunglasses-ai.github.io/classy/docs/getting-started/customizing-things/custom-optimizer/#custom-optimizers)
 
 For the sake of this example, we also implement a custom optimizer based on Adamax ([:scroll: paper link](https://arxiv.org/abs/1412.6980)), a variant of Adam that uses infinite norms and has been shown to perform very well on tasks where embeddings are rather important.
 
 Again, this is quite simple. We just need to implement a `classy.optim.factories.Factory` which provides the right optimizer implementation once it is called. if you're interested, check out [the implementation](src/optim_adamax.py), it is only 30 lines long! (half of which are comments or imports :smile:)
 
 
-### 🤖 [Customizing the model](https://sunglasses-ai.github.io/classy/docs/getting-started/overriding-code/custom-model/)
+### 🤖 [Customizing the model](https://sunglasses-ai.github.io/classy/docs/getting-started/customizing-things/custom-model/)
 
 Finally, arguably the most important piece of the puzzle: our model!
 
@@ -50,7 +50,7 @@ In case you want some more in-depth details, check out [the code itself](src/mod
 All credits for the CRF implementation go to [s14t284](https://github.com/s14t284), the original author of the package [TorchCRF](https://github.com/s14t284/TorchCRF/), which we have imported in our code (under `src/crf.py`) and slightly modified to work with `PyTorch 1.9.0`.
 
 
-### 💯 [Customizing evaluation metric(s)](https://sunglasses-ai.github.io/classy/docs/advanced/custom-evaluation-metric/)
+### 💯 [Customizing evaluation metric(s)](https://sunglasses-ai.github.io/classy/docs/getting-started/customizing-things/custom-metric/)
 
 To conclude, we remind you that **evaluating your model properly** is just as important as training it. 
 And, for the case of predicting labels that span across multiple tokens (which is exactly what NER does), it is crucial to evaluate using a *span-based metric*. 
