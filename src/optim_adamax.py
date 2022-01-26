@@ -18,13 +18,26 @@ class AdamaxFactory(Factory):
     https://pytorch-lightning.readthedocs.io/en/latest/starter/converting.html#move-the-optimizer-s-and-schedulers
     """
 
-    def __init__(self, lr: float, warmup_steps: int, total_steps: int, weight_decay: float):
+    def __init__(
+        self, lr: float, warmup_steps: int, total_steps: int, weight_decay: float
+    ):
         self.lr = lr
         self.weight_decay = weight_decay
         self.warmup_steps = warmup_steps
         self.total_steps = total_steps
 
     def __call__(self, module: torch.nn.Module):
-        optimizer = Adamax(module.parameters(), lr=self.lr, weight_decay=self.weight_decay)
-        scheduler = transformers.get_cosine_schedule_with_warmup(optimizer, self.warmup_steps, self.total_steps)
-        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step", "frequency": 1}}
+        optimizer = Adamax(
+            module.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
+        scheduler = transformers.get_cosine_schedule_with_warmup(
+            optimizer, self.warmup_steps, self.total_steps
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+                "frequency": 1,
+            },
+        }

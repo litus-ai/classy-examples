@@ -136,9 +136,13 @@ class CRFPLModule(TokensTask, ClassyPLModule):
     ) -> torch.Tensor:
         """
         Simple utils to compute the loss via the crf module.
-        :param logits: input logits (batch_size x seq_len x num_classes)
-        :param labels: reference labels (batch_size x seq_len)
-        :return:
+
+        Args:
+            logits: input logits (batch_size x seq_len x num_classes)
+            labels: reference labels (batch_size x seq_len)
+
+        Returns:
+            loss
         """
         crf_fwd = self.crf(logits, labels, mask=labels != self.pad_label_idx)
         loss: torch.Tensor = -(torch.sum(crf_fwd) / len(logits))
@@ -153,34 +157,45 @@ class CRFPLModule(TokensTask, ClassyPLModule):
         token_type_ids: Optional[torch.Tensor] = None,
         labels: Optional[torch.LongTensor] = None,
         compute_predictions: bool = True,
-        compute_loss: bool = True
+        compute_loss: bool = True,
     ) -> Dict[str, torch.Tensor]:
         """
         Method for the forward pass.
         'training_step', 'validation_step' and 'test_step' should call
         this method in order to compute the output logits, predictions and loss.
 
-        :param input_ids: (batch_size x seq_len) subwords ids computed by a Transformer Tokenizer
-        :param attention_mask: (batch_size x seq_len) attention mask computed by a Transformer Tokenizer
-        :param token_offsets: list of tokens offsets containing the corresponding subwords in which they have been split
-        :param samples: a list containing the TokensSamples being classified
-        :param token_type_ids: (batch_size x seq_len) contains the token_type_id of each token in the input_ids
-        :param labels: (batch_size x seq_len)
-        :param compute_predictions: whether or not to compute the predictions using the viterbi algorithm
-        :param compute_loss: whether or not to compute the output loss
-        :return: Dict containing the output logits, the predictions and the loss
+        Args:
+            input_ids: (batch_size x seq_len) subwords ids computed by a Transformer Tokenizer
+            attention_mask: (batch_size x seq_len) attention mask computed by a Transformer Tokenizer
+            token_offsets: list of tokens offsets containing the corresponding subwords in which they have been split
+            samples: a list containing the TokensSamples being classified
+            token_type_ids: (batch_size x seq_len) contains the token_type_id of each token in the input_ids
+            labels: (batch_size x seq_len)
+            compute_predictions: whether or not to compute the predictions using the viterbi algorithm
+            compute_loss: whether or not to compute the output loss
+
+        Returns:
+            Dict containing the output logits, the predictions and the loss
         """
-        word_representations = self.encode_words(input_ids, attention_mask, token_type_ids, token_offsets)
+        word_representations = self.encode_words(
+            input_ids, attention_mask, token_type_ids, token_offsets
+        )
         logits: torch.FloatTensor = self.classification_head(word_representations)
 
         output_bag = {"logits": logits}
 
         if compute_predictions:
             tokens_mask = pad_sequence(
-                [torch.ones(n) for n in map(len, token_offsets)], padding_value=0, batch_first=True
+                [torch.ones(n) for n in map(len, token_offsets)],
+                padding_value=0,
+                batch_first=True,
             ).bool()
-            predictions: List[List[int]] = self.crf.viterbi_decode(logits, mask=tokens_mask)
-            predictions: List[torch.Tensor] = [torch.tensor(seq, device=self.device) for seq in predictions]
+            predictions: List[List[int]] = self.crf.viterbi_decode(
+                logits, mask=tokens_mask
+            )
+            predictions: List[torch.Tensor] = [
+                torch.tensor(seq, device=self.device) for seq in predictions
+            ]
             predictions: torch.Tensor = batchify(predictions, self.pad_label_idx)
             output_bag["predictions"] = predictions
 
@@ -193,11 +208,17 @@ class CRFPLModule(TokensTask, ClassyPLModule):
     def training_step(self, batch: Any, batch_idx: int) -> torch.Tensor:
         """
         This method defines the training_step, where you compute the training loss.
-        :param batch: batch in input with all the fields required for the forward method
-        :param batch_idx: the index of the batch you are processing
-        :return: the loss
+
+        Args:
+            batch: batch in input with all the fields required for the forward method
+            batch_idx: the index of the batch you are processing
+
+        Returns:
+            training loss
         """
-        classification_output = self.forward(**batch, compute_predictions=False, compute_loss=True)
+        classification_output = self.forward(
+            **batch, compute_predictions=False, compute_loss=True
+        )
         self.log("train_loss", classification_output["loss"])
         return classification_output["loss"]
 
@@ -205,16 +226,22 @@ class CRFPLModule(TokensTask, ClassyPLModule):
         """
         This method defines the validation_step, where you compute
         the validation loss and update the validation metrics.
-        :param batch: batch in input with all the fields required for the forward method
-        :param batch_idx: the index of the batch you are processing
-        :return: None
+
+        Args:
+            batch: batch in input with all the fields required for the forward method
+            batch_idx: the index of the batch you are processing
+
         """
-        classification_output = self.forward(**batch, compute_predictions=True, compute_loss=True)
+        classification_output = self.forward(
+            **batch, compute_predictions=True, compute_loss=True
+        )
         loss = classification_output["loss"]
         predictions = classification_output["predictions"]
 
         labels = batch["labels"].clone()
-        labels[labels == -100] = self.vocabulary.get_idx(k="labels", elem=Vocabulary.PAD)
+        labels[labels == -100] = self.vocabulary.get_idx(
+            k="labels", elem=Vocabulary.PAD
+        )
 
         self.accuracy_metric(predictions, labels)
         self.p_metric(predictions, labels)
@@ -232,14 +259,18 @@ class CRFPLModule(TokensTask, ClassyPLModule):
     def test_step(self, batch: dict, batch_idx: int) -> None:
         """
         This method defines the test_step, where you compute and update the validation metrics.
-        :param batch: batch in input with all the fields required for the forward method
-        :param batch_idx: the index of the batch you are processing
-        :return: None
+
+        Args:
+            batch: batch in input with all the fields required for the forward method
+            batch_idx: the index of the batch you are processing
+
         """
         predictions = self.forward(**batch, compute_loss=False)["predictions"]
 
         labels = batch["labels"].clone()
-        labels[labels == -100] = self.vocabulary.get_idx(k="labels", elem=Vocabulary.PAD)
+        labels[labels == -100] = self.vocabulary.get_idx(
+            k="labels", elem=Vocabulary.PAD
+        )
 
         self.accuracy_metric(predictions, labels)
         self.p_metric(predictions, labels)
@@ -253,17 +284,21 @@ class CRFPLModule(TokensTask, ClassyPLModule):
         self.log("test_micro-f1-score", self.micro_f1_metric)
         self.log("test_macro-f1-score", self.macro_f1_metric)
 
-    def batch_predict(self, *args, **kwargs) -> Iterator[Tuple[TokensSample, List[str]]]:
+    def batch_predict(self, *args, **kwargs) -> Iterator[TokensSample]:
         """
-        Receives in input all the parameters required for a forward pass and returns a list containing tuples
-        with each input TokenSample along with its tokens predictions.
+        Receives in input all the parameters required for a forward pass and returns a list of TokenSample in which
+        the predicted_annotation has been modified with the predicted labels.
         """
         samples = kwargs.get("samples")
-        predictions = self.forward(*args, **kwargs, compute_predictions=True, compute_loss=False)["predictions"]
+        predictions = self.forward(
+            *args, **kwargs, compute_predictions=True, compute_loss=False
+        )["predictions"]
         for sample, prediction in zip(samples, predictions):
-            yield sample, [
-                self.vocabulary.get_elem(k="labels", idx=_p.item()) for _p in prediction[: len(sample.tokens)]
+            sample.predicted_annotation = [
+                self.vocabulary.get_elem(k="labels", idx=_p.item())
+                for _p in prediction[: len(sample.tokens)]
             ]
+            yield sample
 
     def encode_words(
         self,
@@ -298,7 +333,9 @@ class CRFPLModule(TokensTask, ClassyPLModule):
         )
 
         for i, sample_offsets in enumerate(token_offsets):
-            encoded_tokens[i, : len(sample_offsets)] = torch.stack([encoded_bpes[i, sj] for sj, ej in sample_offsets])
+            encoded_tokens[i, : len(sample_offsets)] = torch.stack(
+                [encoded_bpes[i, sj] for sj, ej in sample_offsets]
+            )
 
         encoded_tokens = self.lstm(encoded_tokens)[0]
 
@@ -308,7 +345,6 @@ class CRFPLModule(TokensTask, ClassyPLModule):
         """
         This is a simple hook to ensure that at the start of the training
         epoch the transformer model is still in the eval state.
-        :return: None
         """
         if not self.hparams.fine_tune:
             self.transformer.eval()

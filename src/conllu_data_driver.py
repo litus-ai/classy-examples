@@ -16,12 +16,17 @@ class CoNLLUTokensDataDriver(TokensDataDriver):
         Generator[TokensSample] -> file.conllu
 
     """
+
     def read(self, lines: Iterator[str]) -> Generator[TokensSample, None, None]:
         """
         Method to convert a list of lines coming from a file in the CoNLLU format
         to a generator of ~classy.data.data_drivers.TokensSample.
-        :param lines: an Iterator over the lines of a file in input
-        :return: a generator over TokensSample
+
+        Args:
+            lines: an Iterator over the lines of a file in input
+
+        Returns:
+            a generator over TokensSample
         """
         tokens = []
         labels = []
@@ -47,16 +52,34 @@ class CoNLLUTokensDataDriver(TokensDataDriver):
         if len(tokens) > 0:
             yield TokensSample(tokens, labels)
 
-    def save(self, samples: Iterator[TokensSample], path: str) -> None:
+    def save(
+        self,
+        samples: Iterator[TokensSample],
+        path: str,
+        use_predicted_annotation: bool = False,
+    ) -> None:
         """
-        Method to store a collection of ~classy.data.data_drivers.TokensSample into a file following the CoNLLU format.
-        :param samples: an Iterator over a collection of ~classy.data.data_drivers.TokensSample
-        :param path: the file path where the samples will be stored
-        :return: None
+        Method to store a collection of ~classy.data.data_drivers.TokensSample
+         into a file following the CoNLLU format.
+
+        Args:
+            samples: an Iterator over a collection of ~classy.data.data_drivers.TokensSample
+            path: the file path where the samples will be stored
+            use_predicted_annotation: whether to use the predicted_annotation
+                instead of the reference annotation
+
+        Returns:
+            None
         """
+
         with open(path, "w") as f:
             for sample in samples:
-                for i, (token, label) in enumerate(zip(sample.tokens, sample.labels)):
+                labels = (
+                    sample.predicted_annotation
+                    if use_predicted_annotation
+                    else sample.reference_annotation
+                )
+                for i, (token, label) in enumerate(zip(sample.tokens, labels)):
                     f.write(f"{i}\t{token}\t{label}\n")
                 f.write("\n")
 
