@@ -41,7 +41,7 @@ Finally, arguably the most important piece of the puzzle: our model!
 
 For this example, we decided to augment our base Transformer model with a Bidirectional LSTM and a CRF layer on top, which is a great addition to your model in case you have to handle sequences (for example in NER, where you have entities that span across multiple tokens).
 
-Very briefly, a [`ClassyPLModule`](https://sunglasses-ai.github.io/classy/docs/api/pl_modules/base/#ClassyPLModule) is a [`pl.LightningModule`](https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html) that also has a `predict_batch` function that is required for inference. Everything else is inherited from Pytorch Lightning's module and is needed to work with Pytorch Lightning. If you're a PL user, you probably know what you're doing. If you're not, check out [PL's amazing guides](https://pytorch-lightning.readthedocs.io/en/latest/starter/new-project.html)!
+Very briefly, a [`ClassyPLModule`](https://sunglasses-ai.github.io/classy/docs/api/pl_modules/base/#ClassyPLModule) is a [`pl.LightningModule`](https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html) that also has a `predict_batch` function that is required for inference. Everything else is inherited from Pytorch Lightning's module and is needed to work with Pytorch Lightning. If you're a PL user, you probably know what you're doing. If you're not, check out [PL's amazing guides](https://pytorch-lightning.readthedocs.io/en/stable/)!
 
 In case you want some more in-depth details, check out [the code itself](src/model.py), it's well commented! 
 
