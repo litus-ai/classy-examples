@@ -21,9 +21,10 @@ model:
 evaluation:
   _target_: src.span_f1_evaluation.SpanF1Evaluation
 
-# new dataset configuration
+# data configuration
 data:
   datamodule:
+    # configuration of the dataset used at training time
     dataset:
       _target_: 'src.noisy_ner_dataset.NoisyNERDataset.from_file'
       noisification_probability: 0.5
@@ -36,3 +37,11 @@ data:
       prebatch: True
       materialize: False
       for_inference: False
+    # configuration of the dataset used at validation time
+    validation_dataset:
+      noisification_probability: 0.0
+
+prediction:
+  # configuration of the dataset used at prediction (and evaluation) time
+  dataset:
+    noisification_probability: 0.0
