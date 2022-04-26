@@ -1,8 +1,13 @@
 from typing import Iterator, Generator
 
-from classy.data.data_drivers import READERS_DICT, TOKEN, TokensDataDriver, TokensSample
+from classy.data.data_drivers import TOKEN, TokensDataDriver, TokensSample, DataDriver
+from classy.scripts.cli import import_module_and_submodules
 
 
+# this is how you register your data driver
+# future requests for a data driver for token-level classification and "conllu" format
+# will result in instantiating this dataset
+@DataDriver.register(TOKEN, "conllu")
 class CoNLLUTokensDataDriver(TokensDataDriver):
     """
     This is a very simple class where you define
@@ -82,8 +87,3 @@ class CoNLLUTokensDataDriver(TokensDataDriver):
                 for i, (token, label) in enumerate(zip(sample.tokens, labels)):
                     f.write(f"{i}\t{token}\t{label}\n")
                 f.write("\n")
-
-
-# this is how you specify that when the task is a token-level classification and the data format is 'conllu' the
-# dataset must use the CoNLLUTokensDataDriver to parse di samples.
-READERS_DICT[TOKEN, "conllu"] = CoNLLUTokensDataDriver
